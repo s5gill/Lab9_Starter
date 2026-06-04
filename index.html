@@ -10,13 +10,13 @@
 
   <script src="https://cdn.trackjs.com/agent/v3/latest/t.js" crossorigin></script>
   <script>
-    const TRACKJS_TOKEN = 'PASTE_YOUR_TRACKJS_TOKEN_HERE';
+    const TRACKJS_TOKEN = 'b28c42e46d7c43c28b153f7613503738';
 
-    if (window.TrackJS && TRACKJS_TOKEN !== 'PASTE_YOUR_TRACKJS_TOKEN_HERE') {
+    if (window.TrackJS && TRACKJS_TOKEN !== 'b28c42e46d7c43c28b153f7613503738') {
       TrackJS.install({
         token: TRACKJS_TOKEN,
         application: 'lab-9-error-console-demo',
-        userId: 'PASTE_YOUR_TRACKJS_TOKEN_HERE'
+        userId: 'b28c42e46d7c43c28b153f7613503738'
       });
     }
   </script>
@@ -159,7 +159,7 @@
     window.addEventListener('error', function (event) {
       console.log('window.addEventListener("error") also caught:', event.message);
 
-      if (window.TrackJS && typeof TrackJS.track === 'function' && TRACKJS_TOKEN !== 'PASTE_YOUR_TRACKJS_TOKEN_HERE') {
+      if (window.TrackJS && typeof TrackJS.track === 'function' && TRACKJS_TOKEN !== 'b28c42e46d7c43c28b153f7613503738') {
         TrackJS.track(event.error || event.message);
       }
     });
