@@ -6,8 +6,27 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lab 9</title>
+  <link rel="icon" href="favicon.ico">
+
+  <script src="https://cdn.trackjs.com/agent/v3/latest/t.js" crossorigin></script>
+  <script>
+    const TRACKJS_TOKEN = 'PASTE_YOUR_TRACKJS_TOKEN_HERE';
+
+    if (window.TrackJS && TRACKJS_TOKEN !== 'PASTE_YOUR_TRACKJS_TOKEN_HERE') {
+      TrackJS.install({
+        token: TRACKJS_TOKEN,
+        application: 'lab-9-error-console-demo',
+        userId: 'PASTE_YOUR_TRACKJS_TOKEN_HERE'
+      });
+    }
+  </script>
 
   <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.4;
+    }
+
     button {
       margin: 3px;
     }
@@ -24,10 +43,10 @@
     output {
       border: 1px solid gray;
       display: block;
-      height: 18px;
+      min-height: 18px;
       margin-top: 5px;
       padding: 5px;
-      width: 240px;
+      width: 300px;
     }
 
     main {
@@ -46,62 +65,309 @@
       padding: 8px 2px;
       width: 122px;
     }
+
+    .instructions {
+      background-color: #f7f7f7;
+      border-left: 4px solid #777;
+      margin-top: 20px;
+      padding: 10px 14px;
+      width: 680px;
+    }
   </style>
 </head>
 
 <body>
   <main>
+    <h1>Lab 9: Console and Error Handling Demo</h1>
+
     <form>
       <fieldset>
         <legend>Error Calculator</legend>
-        <input name="first-num" id="first-num" />
+        <input name="first-num" id="first-num" placeholder="First" />
         <select name="operator" id="operator">
           <option>+</option>
           <option>-</option>
           <option>*</option>
           <option>/</option>
         </select>
-        <input name="second-num" id="second-num" />
+        <input name="second-num" id="second-num" placeholder="Second" />
         <button id="calculate">Calculate</button>
         <br />
-        <output></output>
+        <output aria-live="polite"></output>
       </fieldset>
     </form>
 
-    <section id="error-btns">
-      <button>Console Log</button>
-      <button>Console Error</button>
-      <button>Console Count</button>
-      <button>Console Warn</button>
-      <button>Console Assert</button>
-      <button>Console Clear</button>
-      <button>Console Dir</button>
-      <button>Console dirxml</button>
-      <button>Console Group Start</button>
-      <button>Console Group End</button>
-      <button>Console Table</button>
-      <button>Start Timer</button>
-      <button>End Timer</button>
-      <button>Console Trace</button>
-      <button>Trigger a Global Error</button>
+    <section class="instructions">
+      <strong>How to test:</strong> open DevTools, go to the Console tab, and press the buttons below.
+      For the calculator, try normal numbers, blank fields, non-numbers, and division by zero.
+    </section>
+
+    <section id="error-btns" aria-label="Console API demo buttons">
+      <button type="button">Console Log</button>
+      <button type="button">Console Error</button>
+      <button type="button">Console Count</button>
+      <button type="button">Console Warn</button>
+      <button type="button">Console Assert</button>
+      <button type="button">Console Clear</button>
+      <button type="button">Console Dir</button>
+      <button type="button">Console dirxml</button>
+      <button type="button">Console Group Start</button>
+      <button type="button">Console Group End</button>
+      <button type="button">Console Table</button>
+      <button type="button">Start Timer</button>
+      <button type="button">End Timer</button>
+      <button type="button">Console Trace</button>
+      <button type="button">Trigger a Global Error</button>
     </section>
   </main>
 
   <script>
-    let form = document.querySelector('form');
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      let output = document.querySelector('output');
-      let firstNum = document.querySelector('#first-num').value;
-      let secondNum = document.querySelector('#second-num').value;
-      let operator = document.querySelector('#operator').value;
-      output.innerHTML = eval(`${firstNum} ${operator} ${secondNum}`);
+    class ValidationError extends Error {
+      constructor(message) {
+        super(message);
+        this.name = 'ValidationError';
+      }
+    }
+
+    class CalculationError extends Error {
+      constructor(message) {
+        super(message);
+        this.name = 'CalculationError';
+      }
+    }
+
+    class MissingDomError extends Error {
+      constructor(selector) {
+        super(`The required DOM element "${selector}" could not be found.`);
+        this.name = 'MissingDomError';
+        this.selector = selector;
+      }
+    }
+
+    window.onerror = function (message, source, lineno, colno, error) {
+      console.log('window.onerror caught a global error:', {
+        message,
+        source,
+        line: lineno,
+        column: colno,
+        error
+      });
+
+      return false;
+    };
+
+    window.addEventListener('error', function (event) {
+      console.log('window.addEventListener("error") also caught:', event.message);
+
+      if (window.TrackJS && typeof TrackJS.track === 'function' && TRACKJS_TOKEN !== 'PASTE_YOUR_TRACKJS_TOKEN_HERE') {
+        TrackJS.track(event.error || event.message);
+      }
     });
 
-    let errorBtns = Array.from(document.querySelectorAll('#error-btns > button'));
+    const form = document.querySelector('form');
+    const output = document.querySelector('output');
+    const firstInput = document.querySelector('#first-num');
+    const secondInput = document.querySelector('#second-num');
+    const operatorInput = document.querySelector('#operator');
+    const errorBtns = Array.from(document.querySelectorAll('#error-btns > button'));
 
-    // Start your code here
-    // You may move this JS to another file if you wish
+    if (!form) {
+      throw new MissingDomError('form');
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      try {
+        if (!output) {
+          throw new MissingDomError('output');
+        }
+
+        const firstValue = firstInput.value.trim();
+        const secondValue = secondInput.value.trim();
+        const operator = operatorInput.value;
+
+        if (firstValue === '' || secondValue === '') {
+          throw new ValidationError('Please enter both numbers before calculating.');
+        }
+
+        const firstNum = Number(firstValue);
+        const secondNum = Number(secondValue);
+
+        if (Number.isNaN(firstNum) || Number.isNaN(secondNum)) {
+          throw new ValidationError('Both inputs must be valid numbers.');
+        }
+
+        const result = calculate(firstNum, secondNum, operator);
+        output.textContent = result;
+        console.log('Calculator result:', { firstNum, operator, secondNum, result });
+      } catch (error) {
+        handleCalculatorError(error);
+      } finally {
+        console.groupCollapsed('Calculator submit cleanup');
+        console.log('The submit event finished, so the finally block ran.');
+        console.log('Current output text:', output ? output.textContent : 'No output element');
+        console.groupEnd();
+      }
+    });
+
+    function calculate(firstNum, secondNum, operator) {
+      switch (operator) {
+        case '+':
+          return firstNum + secondNum;
+        case '-':
+          return firstNum - secondNum;
+        case '*':
+          return firstNum * secondNum;
+        case '/':
+          if (secondNum === 0) {
+            throw new CalculationError('Division by zero is not allowed in this calculator.');
+          }
+          return firstNum / secondNum;
+        default:
+          throw new CalculationError(`The operator "${operator}" is not supported.`);
+      }
+    }
+
+    function handleCalculatorError(error) {
+      if (output) {
+        output.textContent = `${error.name}: ${error.message}`;
+      }
+
+      if (error instanceof ValidationError) {
+        console.warn('Validation problem caught by try/catch:', error);
+      } else if (error instanceof CalculationError) {
+        console.error('Calculation problem caught by try/catch:', error);
+      } else if (error instanceof MissingDomError) {
+        console.error('DOM problem caught by try/catch:', error);
+      } else {
+        console.error('Unexpected error caught by try/catch:', error);
+      }
+    }
+
+    const sampleStudent = {
+      name: 'Lab 9 Student',
+      course: 'Software Engineering Components',
+      currentTopic: 'Console and error handling',
+      completedSteps: ['console methods', 'try/catch/finally', 'custom errors', 'global errors']
+    };
+
+    const sampleErrors = [
+      { id: 1, type: 'ValidationError', trigger: 'Blank calculator input', handled: true },
+      { id: 2, type: 'CalculationError', trigger: 'Division by zero', handled: true },
+      { id: 3, type: 'TypeError', trigger: 'Missing DOM node in global handler demo', handled: false }
+    ];
+
+    let groupIsOpen = false;
+    const timerLabel = 'Lab 9 timer demo';
+
+    const consoleActions = {
+      'Console Log': function () {
+        console.log('console.log demo:', sampleStudent);
+      },
+
+      'Console Error': function () {
+        console.error('console.error demo: this is a simulated error message.', new Error('Demo error object'));
+      },
+
+      'Console Count': function () {
+        console.count('console.count demo button clicks');
+      },
+
+      'Console Warn': function () {
+        console.warn('console.warn demo: warning messages are useful for non-fatal problems.');
+      },
+
+      'Console Assert': function () {
+        const userEnteredNumbers = firstInput.value.trim() !== '' && secondInput.value.trim() !== '';
+        console.assert(userEnteredNumbers, 'console.assert demo: both calculator fields should be filled in first.');
+        console.log('If the fields are filled, the assertion does not print an error.');
+      },
+
+      'Console Clear': function () {
+        console.clear();
+        console.log('console.clear demo: console was cleared, then this message was printed.');
+      },
+
+      'Console Dir': function () {
+        console.dir(document.querySelector('main'));
+      },
+
+      'Console dirxml': function () {
+        console.dirxml(document.querySelector('form'));
+      },
+
+      'Console Group Start': function () {
+        console.group('console.group demo: calculator state');
+        groupIsOpen = true;
+        console.log('First input:', firstInput.value);
+        console.log('Operator:', operatorInput.value);
+        console.log('Second input:', secondInput.value);
+        console.log('Press "Console Group End" to close this group.');
+      },
+
+      'Console Group End': function () {
+        if (groupIsOpen) {
+          console.log('Closing the open console group now.');
+          console.groupEnd();
+          groupIsOpen = false;
+        } else {
+          console.groupCollapsed('console.groupCollapsed demo: no open group existed');
+          console.log('This uses a collapsed group and then closes it immediately.');
+          console.groupEnd();
+        }
+      },
+
+      'Console Table': function () {
+        console.table(sampleErrors);
+      },
+
+      'Start Timer': function () {
+        console.time(timerLabel);
+        console.log('console.time demo started. Press "End Timer" to stop it.');
+      },
+
+      'End Timer': function () {
+        console.timeEnd(timerLabel);
+      },
+
+      'Console Trace': function () {
+        traceLevelOne();
+      },
+
+      'Trigger a Global Error': function () {
+        console.log('About to trigger a realistic uncaught global error.');
+
+        setTimeout(function () {
+          const missingReceiptNode = document.querySelector('#receipt-total');
+          missingReceiptNode.textContent = 'Total updated';
+        }, 0);
+      }
+    };
+
+    errorBtns.forEach(function (button) {
+      button.addEventListener('click', function () {
+        const action = consoleActions[button.textContent.trim()];
+
+        if (action) {
+          action();
+        } else {
+          console.warn('No console action was found for this button:', button.textContent);
+        }
+      });
+    });
+
+    function traceLevelOne() {
+      traceLevelTwo();
+    }
+
+    function traceLevelTwo() {
+      traceLevelThree();
+    }
+
+    function traceLevelThree() {
+      console.trace('console.trace demo: this shows the function call stack.');
+    }
   </script>
 </body>
 
